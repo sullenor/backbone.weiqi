@@ -1,4 +1,63 @@
 /**
+ * Объект для взаимодействия с SGF файлами
+ *
+ * Может парсить их и обходить ноды
+ *
+ */
+function tree(sgf) {
+    return new tree.prototype.init(sgf);
+}
+
+tree.fn = tree.prototype = {
+    init: function (sgf) {
+        this._tree = sgf && this.parse(sgf) || [{}];
+    },
+
+    headers: function () {
+        return this._tree[0];
+    },
+
+    graph: function () {
+        console.dirxml(this._tree);
+    },
+
+    parse: function (sgf) {
+        var _this = this;
+
+        sgf = sgf.replace(/\)|\(|;((?:\w+(?:\[(?:\\\]|.)*?\])+)+)/g, function (m, p1) {
+            switch (m) {
+            case ')':
+                return '],';
+            case '(':
+                return '[';
+            default:
+                return '{' + _this.parseNode(p1) + '},';
+            }
+        });
+
+        sgf = sgf.replace(/,(\]|}|$)/g, function (m, p1) {
+            return p1 || '';
+        });
+
+        return JSON.parse(sgf);
+    },
+
+    parseNode: function (node) {
+        return node.replace(/(\w+)((?:\[(?:\\\]|.)*?\])+)/g, function (m, p1, p2) {
+            if (/\]\[/g.test(p2)) {
+                p2 = '[' + p2.replace(/\[((?:\\\]|.)*?)\]/g, '"$1",') + '],';
+            } else {
+                p2 = p2.replace(/\[((?:\\\]|.)*?)\]/g, '"$1",');
+            }
+
+            return '"' + p1.toLowerCase() + '":' + p2;
+        });
+    }
+};
+
+tree.fn.init.prototype = tree.fn;
+
+/**
  * Методы:
  *
  * Перемещение по узлам
@@ -16,13 +75,15 @@ var model = Backbone.Model.extend({
 
     defaults: function () {
         return {
+            // FF: File format: version of SGF specification governing this SGF file.
+            // GM: Game: type of game represented by this SGF file. A property value of 1 refers to Go.
+            // SZ: Size: size of the board, non square boards are supported.
             sgf: '(;FF[4]GM[1]SZ[19])'
         };
     },
 
     initialize: function () {
-        // История изменения узлов (добавление / удаление камней / меток)
-        this._nodes = [];
+        this._tree = new tree(this.get('sgf'));
         // Описание текущего состояния (камни + метки)
         this._scheme = {
             marking: {},
@@ -60,7 +121,7 @@ var model = Backbone.Model.extend({
  *
  */
 var SGF = Backbone.View.extend({
-    
+
     tagName: 'div',
 
     className: 'scheme',
