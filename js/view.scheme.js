@@ -148,9 +148,9 @@ var SGF = Backbone.View.extend({
     figures: {
         ab: function () {},
         aw: function () {},
-        b: function () {},
-        w: function () {},
-        goban: function (h, w, colors, text) {
+        b: function (x, y, s) {},
+        w: function (x, y, s) {},
+        goban: function (w, h, colors, text) {
             var l = Math.min(h, w);
             var s,b,e;
 
@@ -228,20 +228,55 @@ var SGF = Backbone.View.extend({
         }
     },
 
+    addLayer: function (name) {
+        var layer = new Canvas;
+
+        layer.size(this.$el.width(), this.$el.height());
+        layer.el.classList.add(name);
+
+        this._layers[name] = layer;
+
+        return layer;
+    },
+
+    hasLayer: function (name) {
+        return Boolean(this._layers[name]);
+    },
+
     draw: function (param) {
         var src = this._layers[param.layer];
         var figure = param.figure;
 
-        this.figures[figure].apply(src, [400, 400, this.colors, true]);
+        switch (figure) {
+        case 'goban':
+            this.figures[figure].call(
+                src,
+                src.$el.prop('width'),
+                src.$el.prop('height'),
+                this.colors,
+                true
+            );
+            break;
+        default:
+            this.figures[figure].call(
+                src,
+                'x',
+                'y',
+                's'
+            );
+        }
     },
 
     // Отрисовать SGF, описанную в модели (доска + model._scheme)
     render: function () {
-        if (this._layers.goban === null) {
-            this._layers.goban = new Canvas;
-            this._layers.goban.size(400, 400);
-            this._layers.goban.el.classList.add('goban');
-            this.draw({ layer: 'goban', figure: 'goban' })
+        if (!this.hasLayer('goban')) {
+            this.addLayer('goban');
+            this.draw({ layer: 'goban', figure: 'goban' });
+        }
+
+        if (!_.isEmpty(this.model._scheme)) {
+            this.hasLayer('stones') || this.addLayer('stones');
+            this.hasLayer('marking') || this.addLayer('marking');
         }
 
         this.$el
