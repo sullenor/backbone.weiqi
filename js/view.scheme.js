@@ -85,10 +85,9 @@ var model = Backbone.Model.extend({
     initialize: function () {
         this._tree = new tree(this.get('sgf'));
         // Описание текущего состояния (камни + метки)
-        this._scheme = {
-            marking: {},
-            stones: {}
-        };
+        this._scheme = {};
+
+        this.trigger('change:redraw', this._scheme);
     },
 
     // Применение промежуточных изменений
@@ -97,17 +96,17 @@ var model = Backbone.Model.extend({
     // Перерисовка доски до конкретного узла
     moveTo: function () {},
 
-    // Парсит узел SGF
-    parse: function () {},
+    // Добавление камня на доску
+    add: function (data) {},
 
     // Добавляем данные в буффер текущего узла
-    buf: function () {},
+    buf: function (data) {},
 
-    // Фиксация изменений (буфер), переход к следующему узлу
-    fix: function () {}
-
-    // Методы для формирования данных схемы
-    // Методы для отрисовки всей схемы или локальных изменений (вьюха)
+    extend: function (destination, source, silent) {
+        if (!silent) {
+            this.trigger('view:change', source);
+        }
+    }
 });
 
 /**
@@ -135,10 +134,119 @@ var SGF = Backbone.View.extend({
             marking: null,
             stones: null
         };
+
+        this.listenTo(this.model, 'change:clear');
+        this.listenTo(this.model, 'change:change');
+        this.listenTo(this.model, 'change:redraw');
     },
 
-    draw: function (stones, marking, goban) {},
+    colors: {
+        bg:   '#efdbb8',// '#d9af5b',
+        line: '#7a6652'// '#665544'
+    },
+
+    figures: {
+        ab: function () {},
+        aw: function () {},
+        b: function () {},
+        w: function () {},
+        goban: function (h, w, colors, text) {
+            var l = Math.min(h, w);
+            var s,b,e;
+
+            // Закрашиваем доску
+            if (text) {
+                // С разметкой
+                s = Math.round((l - .5) / 21.5);
+                b = (l - s * 18) / 2,
+                e = l - b;
+
+                this.apply('beginPath')
+                    .prop({ fillStyle: colors.line })
+                    .fillRect({ x0: 0, y0: 0, w: l, h: l })
+                    .prop({ fillStyle: colors.bg })
+                    .fillRect({ x0: s, y0: s, w: l - 2 * s, h: l - 2 * s });
+
+                // Разметка
+                var fs = Math.round(s / 2),
+                    letter = 'ABCDEFGHJKLMNOPQRST'.split('');
+
+                this.prop({
+                        font: fs + 'px Helvetica,Arial',
+                        textAlign: 'center',
+                        strokeStyle: colors.bg
+                    })
+                    .apply('beginPath');
+
+                for (var x0 = l - fs, y0 = fs * 1.5, y1 = l - fs / 2, y2, z, i = 0; i < 19; i++) {
+                    z = b + s * i;
+                    y2 = z + fs / 2;
+
+                    this.fillText({ t: 19 - i, x0: fs, y0: y2 })
+                        .fillText({ t: 19 - i, x0: x0, y0: y2 })
+                        .fillText({ t: letter[i], x0: z, y0: y0 })
+                        .fillText({ t: letter[i], x0: z, y0: y1 });
+                }
+            } else {
+                // Без разметки
+                s = Math.round((l - .5) / 19.5);
+                b = (l - s * 18) / 2,
+                e = l - b;
+
+                this.apply('beginPath')
+                    .prop({ fillStyle: colors.bg })
+                    .fillRect({ x0: 0, y0: 0, w: l, h: l });
+            }
+
+            // Разлиновываем доску
+            this.prop({ strokeStyle: colors.line });
+
+            for (var k, i = 0; i < 19; i++) {
+                k = Math.round(s * i + b);
+
+                this.line({ x0: b + .5, y0: k + .5, x1: e + .5, y1: k + .5 })
+                    .line({ x0: k + .5, y0: b + .5, x1: k + .5, y1: e + .5 });
+            }
+
+            this.apply('stroke');
+
+            // Хоси
+            this.prop({ fillStyle: colors.line });
+
+            var x = [],
+                dx = Math.ceil(s / 10);
+
+            for (var i = 4; i < 19; i += 6) {
+                x.push(Math.round(s * (i - 1) + b) - dx);
+            }
+
+            for (var i = 0, dy = dx * 2 + 1; i < 3; i++ ) {
+                this.fillRect({ x0: x[0], y0: x[i], w: dy, h: dy })
+                    .fillRect({ x0: x[1], y0: x[i], w: dy, h: dy })
+                    .fillRect({ x0: x[2], y0: x[i], w: dy, h: dy });
+            }
+        }
+    },
+
+    draw: function (param) {
+        var src = this._layers[param.layer];
+        var figure = param.figure;
+
+        this.figures[figure].apply(src, [400, 400, this.colors, true]);
+    },
 
     // Отрисовать SGF, описанную в модели (доска + model._scheme)
-    render: function () {}
+    render: function () {
+        if (this._layers.goban === null) {
+            this._layers.goban = new Canvas;
+            this._layers.goban.size(400, 400);
+            this.draw({ layer: 'goban', figure: 'goban' })
+        }
+
+        this.$el
+            .empty()
+            .append(
+                this._layers.goban.el
+            );
+    }
 });

@@ -91,7 +91,7 @@ var Canvas = Backbone.View.extend({
 
         return src;
     },
-    
+
     arc: function (param) {
         var ctx = this.ctx();
 
@@ -121,6 +121,23 @@ var Canvas = Backbone.View.extend({
         var ctx = this.ctx();
 
         ctx.rect(param.x0, param.y0, param.w, param.h);
+
+        return this;
+    },
+
+    fillRect: function (param) {
+        var ctx = this.ctx();
+
+        ctx.fillRect(param.x0, param.y0, param.w, param.h);
+
+        return this;
+    },
+
+    fillText: function (param) {
+        var ctx = this.ctx();
+
+        // param.mw
+        ctx.fillText(param.t, param.x0, param.y0);
 
         return this;
     }
