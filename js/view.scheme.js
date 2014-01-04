@@ -240,6 +240,7 @@ var SGF = Backbone.View.extend({
         if (this._layers.goban === null) {
             this._layers.goban = new Canvas;
             this._layers.goban.size(400, 400);
+            this._layers.goban.el.classList.add('goban');
             this.draw({ layer: 'goban', figure: 'goban' })
         }
 

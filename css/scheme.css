@@ -1,0 +1,29 @@
+.scheme
+{
+    position: relative;
+}
+
+.scheme .goban,
+.scheme .stones,
+.scheme .marking
+{
+    position: absolute;
+
+    top: 0;
+    left: 0;
+}
+
+.scheme .goban
+{
+    z-index: 0;
+}
+
+.scheme .stones
+{
+    z-index: 1;
+}
+
+.scheme .marking
+{
+    z-index: 2;
+}
