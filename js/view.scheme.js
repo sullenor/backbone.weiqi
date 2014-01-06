@@ -163,9 +163,19 @@ var SGF = Backbone.View.extend({
 
                 this.apply('beginPath')
                     .prop({ fillStyle: colors.line })
-                    .fillRect({ x0: 0, y0: 0, w: l, h: l })
+                    .fillRect({
+                        x0: 0,
+                        y0: 0,
+                        w: l,
+                        h: l
+                    })
                     .prop({ fillStyle: colors.bg })
-                    .fillRect({ x0: s, y0: s, w: l - 2 * s, h: l - 2 * s });
+                    .fillRect({
+                        x0: s,
+                        y0: s,
+                        w: l - 2 * s,
+                        h: l - 2 * s
+                    });
 
                 // Разметка
                 var fs = Math.round(s / 2),
@@ -182,10 +192,26 @@ var SGF = Backbone.View.extend({
                     z = b + s * i;
                     y2 = z + fs / 2;
 
-                    this.fillText({ t: 19 - i, x0: fs, y0: y2 })
-                        .fillText({ t: 19 - i, x0: x0, y0: y2 })
-                        .fillText({ t: letter[i], x0: z, y0: y0 })
-                        .fillText({ t: letter[i], x0: z, y0: y1 });
+                    this.fillText({
+                            t: 19 - i,
+                            x0: fs,
+                            y0: y2
+                        })
+                        .fillText({
+                            t: 19 - i,
+                            x0: x0,
+                            y0: y2
+                        })
+                        .fillText({
+                            t: letter[i],
+                            x0: z,
+                            y0: y0
+                        })
+                        .fillText({
+                            t: letter[i],
+                            x0: z,
+                            y0: y1
+                        });
                 }
             } else {
                 // Без разметки
@@ -195,7 +221,12 @@ var SGF = Backbone.View.extend({
 
                 this.apply('beginPath')
                     .prop({ fillStyle: colors.bg })
-                    .fillRect({ x0: 0, y0: 0, w: l, h: l });
+                    .fillRect({
+                        x0: 0,
+                        y0: 0,
+                        w: l,
+                        h: l
+                    });
             }
 
             // Разлиновываем доску
@@ -204,8 +235,18 @@ var SGF = Backbone.View.extend({
             for (var k, i = 0; i < 19; i++) {
                 k = Math.round(s * i + b);
 
-                this.line({ x0: b + .5, y0: k + .5, x1: e + .5, y1: k + .5 })
-                    .line({ x0: k + .5, y0: b + .5, x1: k + .5, y1: e + .5 });
+                this.line({
+                        x0: b + .5,
+                        y0: k + .5,
+                        x1: e + .5,
+                        y1: k + .5
+                    })
+                    .line({
+                        x0: k + .5,
+                        y0: b + .5,
+                        x1: k + .5,
+                        y1: e + .5
+                    });
             }
 
             this.apply('stroke');
@@ -221,9 +262,24 @@ var SGF = Backbone.View.extend({
             }
 
             for (var i = 0, dy = dx * 2 + 1; i < 3; i++ ) {
-                this.fillRect({ x0: x[0], y0: x[i], w: dy, h: dy })
-                    .fillRect({ x0: x[1], y0: x[i], w: dy, h: dy })
-                    .fillRect({ x0: x[2], y0: x[i], w: dy, h: dy });
+                this.fillRect({
+                        x0: x[0],
+                        y0: x[i],
+                        w: dy,
+                        h: dy
+                    })
+                    .fillRect({
+                        x0: x[1],
+                        y0: x[i],
+                        w: dy,
+                        h: dy
+                    })
+                    .fillRect({
+                        x0: x[2],
+                        y0: x[i],
+                        w: dy,
+                        h: dy
+                    });
             }
         }
     },
