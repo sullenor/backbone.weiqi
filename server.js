@@ -10,10 +10,20 @@ var scripts = [
     'js/view.scheme.js'
 ];
 
-var html = '<!doctype html><html lang="en"><head><meta charset="UTF-8" /><title>weiqi</title>'
-+ scripts.map(function (s) {
-    return '<script type="text/javascript" src="' + s + '"></script>';
-}).join('') + '</head><body><script type="text/javascript" src="client.js"></script></body></html>';
+var html = '<!doctype html><html lang="en"><head><meta charset="UTF-8" /><title>{{title}}</title>{{head}}</head><body>{{body}}</body></html>';
+
+html = html.replace(/{{([a-z]+)}}/g, function (m, k) {
+    switch (k) {
+    case 'title':
+        return 'weiqi';
+    case 'head':
+        return '<link rel="stylesheet" href="css/scheme.css" />' + scripts.map(function (s) {
+            return '<script type="text/javascript" src="' + s + '"></script>';
+        }).join('');
+    case 'body':
+        return '<script type="text/javascript" src="client.js"></script>';
+    }
+});
 
 
 
@@ -27,8 +37,13 @@ http.createServer(function (req, res) {
                 console.log(err.toString());
                 res.statusCode = 404;
             } else {
-                if (/\.js$/i.test(path)) {
+                switch (/[a-z]+$/gi) {
+                case 'css':
+                    res.writeHead(200, {'Content-Type': 'text/css'});
+                    break;
+                case 'js':
                     res.writeHead(200, {'Content-Type': 'application/javascript'});
+                    break;
                 }
 
                 res.write(data);
