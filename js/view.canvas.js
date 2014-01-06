@@ -14,9 +14,9 @@ var Canvas = Backbone.View.extend({
         return this._cache['ctx'];
     },
 
-    size: function (w, h) {
-        this.el.setAttribute('width', w);
-        this.el.setAttribute('height', h);
+    size: function (size) {
+        this.el.setAttribute('width', size.w);
+        this.el.setAttribute('height', size.h);
 
         return this;
     },

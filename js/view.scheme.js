@@ -134,10 +134,67 @@ var SGF = Backbone.View.extend({
             marking: null,
             stones: null
         };
+        // Режим работы с гобаном
+        // игра, редактирование (добавление камней / меток)
+        this._mode = 'play';
+        this._turn = 'b';
 
         this.listenTo(this.model, 'change:clear');
         this.listenTo(this.model, 'change:change');
         this.listenTo(this.model, 'change:redraw');
+    },
+
+    events: {
+        'click': 'clickHandler'
+    },
+
+    // Считаем координаты, выбираем действие и передаем изменения модели
+    clickHandler: function (e) {
+        e.stopPropagation();
+
+        var coords = this.coords(e.pageX, e.pageY);
+
+        if (coords) {
+            switch (this._mode) {
+            default:
+                //this.model.add();
+            }
+        }
+    },
+
+    coords: function (x, y) {
+        var offset = this.$el.offset(),
+            x = this.coordCount(x, offset.left),
+            y = this.coordCount(y, offset.top);
+
+        if (x && y) {
+            var dx = Math.abs(Math.round(x) - x),
+                dy = Math.abs(Math.round(y) - y);
+
+            if (dx < .4 && dy < .4) {
+                return this.coordConvert(x) + this.coordConvert(y);
+            } else {
+                return null;
+            }
+        }
+
+        return null;
+    },
+
+    coordCount: function (x, dx) {
+        var x = (x - dx - this._size.b) / this._size.s;
+
+        if (x > -1 && x < 19) {
+            return x;
+        } else {
+            return null;
+        }
+    },
+
+    coordConvert: function (x) {
+        var a = 'a'.charCodeAt(0);
+
+        return String.fromCharCode(a + Math.round(x));
     },
 
     colors: {
@@ -150,7 +207,7 @@ var SGF = Backbone.View.extend({
         aw: function () {},
         b: function (x, y, s) {},
         w: function (x, y, s) {},
-        goban: function (w, h, colors, text) {
+        goban: function (w, h, colors, text, parent) {
             var l = Math.min(h, w);
             var s,b,e;
 
@@ -160,6 +217,8 @@ var SGF = Backbone.View.extend({
                 s = Math.round((l - .5) / 21.5);
                 b = (l - s * 18) / 2,
                 e = l - b;
+
+                parent._size.b = b;
 
                 this.apply('beginPath')
                     .prop({ fillStyle: colors.line })
@@ -229,6 +288,8 @@ var SGF = Backbone.View.extend({
                     });
             }
 
+            parent._size.s = s;
+
             // Разлиновываем доску
             this.prop({ strokeStyle: colors.line });
 
@@ -287,7 +348,7 @@ var SGF = Backbone.View.extend({
     addLayer: function (name) {
         var layer = new Canvas;
 
-        layer.size(this.$el.width(), this.$el.height());
+        layer.size(this._size);
         layer.el.classList.add(name);
 
         this._layers[name] = layer;
@@ -310,7 +371,8 @@ var SGF = Backbone.View.extend({
                 src.$el.prop('width'),
                 src.$el.prop('height'),
                 this.colors,
-                true
+                true,
+                this
             );
             break;
         default:
@@ -325,6 +387,11 @@ var SGF = Backbone.View.extend({
 
     // Отрисовать SGF, описанную в модели (доска + model._scheme)
     render: function () {
+        this._size = {
+            w: this.$el.width(),
+            h: this.$el.height()
+        };
+
         if (!this.hasLayer('goban')) {
             this.addLayer('goban');
             this.draw({ layer: 'goban', figure: 'goban' });
