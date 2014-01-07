@@ -37,7 +37,7 @@ http.createServer(function (req, res) {
                 console.log(err.toString());
                 res.statusCode = 404;
             } else {
-                switch (/[a-z]+$/gi) {
+                switch (String(/[a-z]+$/gi.exec(path))) {
                 case 'css':
                     res.writeHead(200, {'Content-Type': 'text/css'});
                     break;

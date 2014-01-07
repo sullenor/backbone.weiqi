@@ -58,38 +58,6 @@ tree.fn = tree.prototype = {
 tree.fn.init.prototype = tree.fn;
 
 /**
- * Объект для передачи координат
- *
- */
-var node = Backbone.Model.extend({
-
-    // charCoord
-    // type
-    // value
-    // x
-    // y
-    defaults: function () {
-        return {
-            charCoord: null,
-            type: null,
-            value: null,
-            x: null,
-            y: null
-        };
-    },
-
-    charCoord: function (i) {
-        var chars = this.get('charCoord');
-
-        if (chars) {
-            return i && chars.charAt(i) || chars;
-        }
-
-        return null;
-    }
-});
-
-/**
  * Методы:
  *
  * Перемещение по узлам
@@ -103,41 +71,29 @@ var node = Backbone.Model.extend({
  * с локальными изменениями (применение изменений за каждый промежуточный узел)
  *
  */
-var model = Backbone.Model.extend({
-
+var schemeModel = Backbone.Model.extend({
+    
     defaults: function () {
         return {
-            // FF: File format: version of SGF specification governing this SGF file.
-            // GM: Game: type of game represented by this SGF file. A property value of 1 refers to Go.
-            // SZ: Size: size of the board, non square boards are supported.
-            sgf: '(;FF[4]GM[1]SZ[19])'
+            colors: {
+                bg:   '#efdbb8',// '#d9af5b',
+                line: '#7a6652'// '#665544'
+            },
+            hasMarking: true,
+            lgth: null
         };
     },
 
     initialize: function () {
-        this._tree = new tree(this.get('sgf'));
-        // Описание текущего состояния (камни + метки)
-        this._scheme = {};
-
-        this.trigger('change:redraw', this._scheme);
+        this.set('tree', tree(this.get('sgf')));
     },
 
-    // Применение промежуточных изменений
-    moveBy: function () {},
+    hasMarking: function () {
+        return this.get('hasMarking');
+    },
 
-    // Перерисовка доски до конкретного узла
-    moveTo: function () {},
-
-    // Добавление камня на доску
-    add: function (data) {},
-
-    // Добавляем данные в буффер текущего узла
-    buf: function (data) {},
-
-    extend: function (destination, source, silent) {
-        if (!silent) {
-            this.trigger('view:change', source);
-        }
+    size: function () {
+        return this.get('size');
     }
 });
 
@@ -151,293 +107,221 @@ var model = Backbone.Model.extend({
  * Два объекта с текущим состоянием (камни и метки), а также объект с изменениями
  *
  */
-var SGF = Backbone.View.extend({
-
+var schemeView = Backbone.View.extend({
+    
     tagName: 'div',
 
     className: 'scheme',
 
-    // Создаем слои
-    // Подписываемся на события
-    initialize: function () {
-        // Ссылки на вьюхи
-        this._layers = {
-            goban: null,
-            marking: null,
-            stones: null
-        };
-        // Режим работы с гобаном
-        // игра, редактирование (добавление камней / меток)
-        this._mode = 'play';
-        this._turn = 'b';
-
-        this.listenTo(this.model, 'change:clear');
-        this.listenTo(this.model, 'change:change');
-        this.listenTo(this.model, 'change:redraw');
-    },
-
     events: {
-        'click': 'clickHandler'
+        'click': 'handleClick'
     },
 
-    // Считаем координаты, выбираем действие и передаем изменения модели
-    clickHandler: function (e) {
+    initialize: function () {
+        this._layers = {};
+
+        this.listenTo(this.model, 'change:lgth', this.setDimensions);
+        /*this.listenTo(this.model, 'vm:clear');
+        this.listenTo(this.model, 'vm:change');
+        this.listenTo(this.model, 'vm:redraw');*/
+    },
+
+    handleClick: function (e) {
+        var off = this.$el.offset(),
+            x = e.pageX - off.left,
+            y = e.pageY - off.top;
+
         e.stopPropagation();
-
-        var coords = this.coords(e.pageX, e.pageY);
-
-        if (coords) {
-            switch (this._mode) {
-            default:
-                //this.model.add();
-            }
-        }
+        console.log(x, y);
     },
 
-    coords: function (x, y) {
-        var offset = this.$el.offset(),
-            x = this.coordCount(x, offset.left),
-            y = this.coordCount(y, offset.top);
+    setDimensions: function (state) {
+        var lgth = state.get('lgth'),
+            ps = [],
+            frame,
+            unit;
 
-        if (x && y) {
-            var dx = Math.abs(Math.round(x) - x),
-                dy = Math.abs(Math.round(y) - y);
-
-            if (dx < .4 && dy < .4) {
-                return this.coordConvert(x) + this.coordConvert(y);
-            } else {
-                return null;
-            }
-        }
-
-        return null;
-    },
-
-    coordCount: function (x, dx) {
-        var x = (x - dx - this._size.b) / this._size.s;
-
-        if (x > -1 && x < 19) {
-            return x;
+        if (state.hasMarking()) {
+            unit = Math.round((lgth - .5) / 21.5);
+            frame = (lgth - unit * 18) / 2;
         } else {
-            return null;
+            unit = Math.round((lgth - .5) / 19.5);
+            frame = (lgth - unit * 18) / 2;
         }
-    },
 
-    coordConvert: function (x) {
-        var a = 'a'.charCodeAt(0);
+        for (var i = 0; i < 19; i++) {
+            ps.push(Math.round(unit * i + frame));
+        }
 
-        return String.fromCharCode(a + Math.round(x));
-    },
-
-    colors: {
-        bg:   '#efdbb8',// '#d9af5b',
-        line: '#7a6652'// '#665544'
+        state.set({
+            frame: frame,
+            unit: unit,
+            ps: ps
+        });
     },
 
     figures: {
-        ab: function () {},
-        aw: function () {},
-        b: function (x, y, s) {},
-        w: function (x, y, s) {},
-        goban: function (w, h, colors, text, parent) {
-            var l = Math.min(h, w);
-            var s,b,e;
 
-            // Закрашиваем доску
-            if (text) {
-                // С разметкой
-                s = Math.round((l - .5) / 21.5);
-                b = (l - s * 18) / 2,
-                e = l - b;
+        goban: function (state) {
+            var colors = state.get('colors'),
+                ps = state.get('ps'),
+                lgth = state.get('lgth'),
+                unit = state.get('unit'),
+                frame = state.get('frame');
 
-                parent._size.b = b;
-
+            if (state.hasMarking()) {
                 this.apply('beginPath')
                     .prop({ fillStyle: colors.line })
                     .fillRect({
                         x0: 0,
                         y0: 0,
-                        w: l,
-                        h: l
+                        w: lgth,
+                        h: lgth
                     })
                     .prop({ fillStyle: colors.bg })
                     .fillRect({
-                        x0: s,
-                        y0: s,
-                        w: l - 2 * s,
-                        h: l - 2 * s
+                        x0: unit,
+                        y0: unit,
+                        w: lgth - 2 * unit,
+                        h: lgth - 2 * unit
                     });
 
                 // Разметка
-                var fs = Math.round(s / 2),
-                    letter = 'ABCDEFGHJKLMNOPQRST'.split('');
+                var fontSize = Math.round(unit / 2),
+                    letters = 'ABCDEFGHJKLMNOPQRST'.split('');
 
                 this.prop({
-                        font: fs + 'px Helvetica,Arial',
+                        font: fontSize + 'px Helvetica,Arial',
                         textAlign: 'center',
                         strokeStyle: colors.bg
                     })
                     .apply('beginPath');
 
-                for (var x0 = l - fs, y0 = fs * 1.5, y1 = l - fs / 2, y2, z, i = 0; i < 19; i++) {
-                    z = b + s * i;
-                    y2 = z + fs / 2;
-
+                for (var i = 0; i < 19; i++) {
                     this.fillText({
                             t: 19 - i,
-                            x0: fs,
-                            y0: y2
+                            x0: fontSize,
+                            y0: ps[i] + fontSize / 2
                         })
                         .fillText({
                             t: 19 - i,
-                            x0: x0,
-                            y0: y2
+                            x0: lgth - fontSize,
+                            y0: ps[i] + fontSize / 2
                         })
                         .fillText({
-                            t: letter[i],
-                            x0: z,
-                            y0: y0
+                            t: letters[i],
+                            x0: ps[i],
+                            y0: fontSize * 1.5
                         })
                         .fillText({
-                            t: letter[i],
-                            x0: z,
-                            y0: y1
+                            t: letters[i],
+                            x0: ps[i],
+                            y0: lgth - fontSize / 2
                         });
                 }
             } else {
-                // Без разметки
-                s = Math.round((l - .5) / 19.5);
-                b = (l - s * 18) / 2,
-                e = l - b;
-
                 this.apply('beginPath')
                     .prop({ fillStyle: colors.bg })
                     .fillRect({
                         x0: 0,
                         y0: 0,
-                        w: l,
-                        h: l
+                        w: lgth,
+                        h: lgth
                     });
             }
 
-            parent._size.s = s;
-
-            // Разлиновываем доску
+            // Сетка
             this.prop({ strokeStyle: colors.line });
 
-            for (var k, i = 0; i < 19; i++) {
-                k = Math.round(s * i + b);
-
+            for (var i = 0; i < 19; i++) {
                 this.line({
-                        x0: b + .5,
-                        y0: k + .5,
-                        x1: e + .5,
-                        y1: k + .5
+                        x0: frame + .5,
+                        y0: ps[i] + .5,
+                        x1: lgth - frame + .5,
+                        y1: ps[i] + .5
                     })
                     .line({
-                        x0: k + .5,
-                        y0: b + .5,
-                        x1: k + .5,
-                        y1: e + .5
+                        x0: ps[i] + .5,
+                        y0: frame + .5,
+                        x1: ps[i] + .5,
+                        y1: lgth - frame + .5
                     });
             }
 
             this.apply('stroke');
 
             // Хоси
+            var pss = [],
+                w0 = Math.ceil(unit / 10),
+                w1 = 2 * w0 + 1;
+
             this.prop({ fillStyle: colors.line });
 
-            var x = [],
-                dx = Math.ceil(s / 10);
-
-            for (var i = 4; i < 19; i += 6) {
-                x.push(Math.round(s * (i - 1) + b) - dx);
+            for (var i = 3; i < 19; i += 6) {
+                pss.push(Math.round(ps[i] - w0));
             }
 
-            for (var i = 0, dy = dx * 2 + 1; i < 3; i++ ) {
-                this.fillRect({
-                        x0: x[0],
-                        y0: x[i],
-                        w: dy,
-                        h: dy
-                    })
-                    .fillRect({
-                        x0: x[1],
-                        y0: x[i],
-                        w: dy,
-                        h: dy
-                    })
-                    .fillRect({
-                        x0: x[2],
-                        y0: x[i],
-                        w: dy,
-                        h: dy
+            for (var i = 0; i < 3; i++) {
+                for (var j = 0; j < 3; j++) {
+                    this.fillRect({
+                        x0: pss[i],
+                        y0: pss[j],
+                        w: w1,
+                        h: w1
                     });
+                }
             }
         }
+    },
+
+    draw: function (attr) {
+        var src = this.layer(attr.layer),
+            method = this.figures[attr.figure];
+
+        method.call(src, this.model);
     },
 
     addLayer: function (name) {
         var layer = new Canvas;
 
-        layer.size(this._size);
+        layer.size(this.model.size());
         layer.el.classList.add(name);
-
-        this._layers[name] = layer;
+        this.layer(name, layer);
 
         return layer;
     },
 
-    hasLayer: function (name) {
-        return Boolean(this._layers[name]);
-    },
-
-    draw: function (param) {
-        var src = this._layers[param.layer];
-        var figure = param.figure;
-
-        switch (figure) {
-        case 'goban':
-            this.figures[figure].call(
-                src,
-                src.$el.prop('width'),
-                src.$el.prop('height'),
-                this.colors,
-                true,
-                this
-            );
-            break;
-        default:
-            this.figures[figure].call(
-                src,
-                'x',
-                'y',
-                's'
-            );
+    layer: function (name, source) {
+        if (source === undefined) {
+            return this._layers[name];
+        } else {
+            this._layers[name] = source;
         }
     },
 
-    // Отрисовать SGF, описанную в модели (доска + model._scheme)
     render: function () {
-        this._size = {
-            w: this.$el.width(),
-            h: this.$el.height()
-        };
+        // Пересчитываем размеры
+        var w = this.$el.width(),
+            h = this.$el.height();
 
-        if (!this.hasLayer('goban')) {
-            this.addLayer('goban');
-            this.draw({ layer: 'goban', figure: 'goban' });
-        }
+        this.model.set({
+            size: {
+                w: w,
+                h: h
+            },
+            lgth: Math.min(w, h) // Триггерит метод setDimensions
+        });
 
-        if (!_.isEmpty(this.model._scheme)) {
-            this.hasLayer('stones') || this.addLayer('stones');
-            this.hasLayer('marking') || this.addLayer('marking');
-        }
+        this.addLayer('goban');
+        this.draw({
+            layer: 'goban',
+            figure: 'goban'
+        });
 
         this.$el
             .empty()
             .append(
-                this._layers.goban.el
+                this.layer('goban').el
             );
     }
 });
