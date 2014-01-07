@@ -58,6 +58,38 @@ tree.fn = tree.prototype = {
 tree.fn.init.prototype = tree.fn;
 
 /**
+ * Объект для передачи координат
+ *
+ */
+var node = Backbone.Model.extend({
+
+    // charCoord
+    // type
+    // value
+    // x
+    // y
+    defaults: function () {
+        return {
+            charCoord: null,
+            type: null,
+            value: null,
+            x: null,
+            y: null
+        };
+    },
+
+    charCoord: function (i) {
+        var chars = this.get('charCoord');
+
+        if (chars) {
+            return i && chars.charAt(i) || chars;
+        }
+
+        return null;
+    }
+});
+
+/**
  * Методы:
  *
  * Перемещение по узлам
