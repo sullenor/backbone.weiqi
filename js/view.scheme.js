@@ -79,8 +79,14 @@ var schemeModel = Backbone.Model.extend({
                 bg:   '#efdbb8',// '#d9af5b',
                 line: '#7a6652'// '#665544'
             },
+            // Наличие разметки
             hasMarking: true,
-            lgth: null
+            // Минимум из ширины / высоты
+            lgth: null,
+            // Буфер
+            buf: {},
+            // Диаграмма
+            scheme: {}
         };
     },
 
@@ -88,13 +94,23 @@ var schemeModel = Backbone.Model.extend({
         this.set('tree', tree(this.get('sgf')));
     },
 
+    // Нужно ли рисовать разметку вокруг доски
     hasMarking: function () {
         return this.get('hasMarking');
     },
 
     size: function () {
         return this.get('size');
-    }
+    },
+
+    // p: координаты
+    // x: число
+    // y: число
+    add: function (data) {
+        console.log(data);
+    },
+
+    extend: function (destination, source) {}
 });
 
 /**
@@ -132,7 +148,20 @@ var schemeView = Backbone.View.extend({
             y = e.pageY - off.top;
 
         e.stopPropagation();
-        console.log(x, y);
+
+        x = this.getPosition(x);
+        y = this.getPosition(y);
+
+        if (this.isValid(x, y)) {
+            x = Math.round(x);
+            y = Math.round(y);
+
+            this.model.add({
+                p: this.numToLetter(x, y),
+                x: x,
+                y: y
+            });
+        }
     },
 
     setDimensions: function (state) {
@@ -162,6 +191,72 @@ var schemeView = Backbone.View.extend({
 
     figures: {
 
+        ab: function (state, coords) {
+            var ps = state.get('ps'),
+                unit = state.get('unit'),
+                delta = Math.round(unit / 4);
+
+            this.apply('beginPath')
+                .prop({ fillStyle: '#000' });
+
+            for (var lgth = coords.length, i = 0; i < lgth; i++) {
+                this.fillRect({
+                        x0: ps[coords[i].x] - delta,
+                        y0: ps[coords[i].y] - delta,
+                        w: 1 + delta * 2,
+                        h: 1 + delta * 2
+                    });
+            }
+        },
+
+        aw: function (state, coords) {
+            var ps = state.get('ps'),
+                unit = state.get('unit'),
+                delta = Math.round(unit / 4);
+
+            this.apply('beginPath')
+                .prop({ fillStyle: '#fff' });
+
+            for (var lgth = coords.length, i = 0; i < lgth; i++) {
+                this.fillRect({
+                        x0: ps[coords[i].x] - delta,
+                        y0: ps[coords[i].y] - delta,
+                        w: 1 + delta * 2,
+                        h: 1 + delta * 2
+                    });
+            }
+        },
+
+        b: function (state, coords) {
+            var ps = state.get('ps'),
+                unit = state.get('unit'),
+                delta = Math.round(unit / 4);
+
+            this.apply('beginPath')
+                .prop({ fillStyle: '#000' })
+                .fillRect({
+                    x0: ps[coords[i].x] - delta,
+                    y0: ps[coords[i].y] - delta,
+                    w: 1 + delta * 2,
+                    h: 1 + delta * 2
+                });
+        },
+
+        w: function (state, coords) {
+            var ps = state.get('ps'),
+                unit = state.get('unit'),
+                delta = Math.round(unit / 4);
+
+            this.apply('beginPath')
+                .prop({ fillStyle: '#fff' })
+                .fillRect({
+                    x0: ps[coords[i].x] - delta,
+                    y0: ps[coords[i].y] - delta,
+                    w: 1 + delta * 2,
+                    h: 1 + delta * 2
+                });
+        },
+
         goban: function (state) {
             var colors = state.get('colors'),
                 ps = state.get('ps'),
@@ -169,6 +264,7 @@ var schemeView = Backbone.View.extend({
                 unit = state.get('unit'),
                 frame = state.get('frame');
 
+            // Фон
             if (state.hasMarking()) {
                 this.apply('beginPath')
                     .prop({ fillStyle: colors.line })
@@ -275,10 +371,80 @@ var schemeView = Backbone.View.extend({
     },
 
     draw: function (attr) {
-        var src = this.layer(attr.layer),
-            method = this.figures[attr.figure];
+        if (attr === 'goban') {
+            var layer = this.layer('goban'),
+                method = this.figures['goban'];
 
-        method.call(src, this.model);
+            method.call(layer, this.model);
+        } else {
+            var layer,
+                method,
+                keys = {
+                    a: 'stones',
+                    b: 'stones',
+                    ab: 'stones',
+                    aw: 'stones'
+                };
+
+            _.each(attr, function (v, k) {
+                if (k in this.figures) {
+                    layer = this.layer(keys[k] || 'marking');
+                    method = this.figures[k];
+                    method.call(layer, this.model, this.letterToNum(v));
+                }
+            }, this);
+        }
+    },
+
+    isValid: function () {
+        for (var lgth = arguments.length, i = 0; i < lgth; i++) {
+            if (Math.abs(Math.round(arguments[i]) - arguments[i]) > .4) {
+                return false;
+            }
+        }
+
+        return true;
+    },
+
+    numToLetter: function () {
+        var a = 'a'.charCodeAt(0),
+            rs = '';
+
+        for (var lgth = arguments.length, i = 0; i < lgth; i++) {
+            rs += String.fromCharCode(arguments[i] + a);
+        }
+
+        return rs;
+    },
+
+    letterToNum: function (coords) {
+        var a = 'a'.charCodeAt(0);
+
+        if (_.isArray(coords)) {
+            for (var lgth = coords.length, i = 0; i < lgth; i++) {
+                coords[i] = {
+                    x: coords[i].charCodeAt(0) - a,
+                    y: coords[i].charCodeAt(1) - a
+                };
+            }
+
+            return coords;
+        } else {
+            return {
+                x: coords.charCodeAt(0) - a,
+                y: coords.charCodeAt(1) - a
+            };
+        }
+    },
+
+    getPosition: function (x) {
+        x = (x - this.model.get('frame')) / this.model.get('unit');
+
+        if (x > -1 && x < 19) {
+            return x;
+        } else {
+            return null;
+        }
     },
 
     addLayer: function (name) {
@@ -313,15 +479,18 @@ var schemeView = Backbone.View.extend({
         });
 
         this.addLayer('goban');
-        this.draw({
-            layer: 'goban',
-            figure: 'goban'
-        });
+        this.draw('goban');
+
+        this.addLayer('stones');
+        this.addLayer('marking');
+        this.draw(this.model.get('scheme'));
 
         this.$el
             .empty()
             .append(
-                this.layer('goban').el
+                this.layer('goban').el,
+                this.layer('stones').el,
+                this.layer('marking').el
             );
     }
 });
