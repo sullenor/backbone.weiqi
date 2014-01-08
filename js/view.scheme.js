@@ -1,4 +1,36 @@
 /**
+ * Объект для хранения и передачи координат
+ *
+ */
+function token(x, y) {
+    this.x = x;
+    this.y = y;
+}
+
+token.prototype = {
+    alpha: 'a'.charCodeAt(0),
+
+    encode: function (x) {
+        return String.fromCharCode(this.alpha + x);
+    },
+
+    toString: function (p) {
+        if (!this.literal) {
+            this.literal = this.encode(this.x) + this.encode(this.y);
+        }
+
+        return p === undefined ? this.literal : this.literal.charAt(p);
+    },
+
+    valueOf: function () {
+        return {
+            x: this.x,
+            y: this.y
+        };
+    }
+};
+
+/**
  * Объект для взаимодействия с SGF файлами
  *
  * Может парсить их и обходить ноды
@@ -71,8 +103,7 @@ tree.fn.init.prototype = tree.fn;
  * с локальными изменениями (применение изменений за каждый промежуточный узел)
  *
  */
-var schemeModel = Backbone.Model.extend({
-    
+var schemeModel = Backbone.Model.extend({    
     defaults: function () {
         return {
             colors: {
@@ -83,6 +114,8 @@ var schemeModel = Backbone.Model.extend({
             hasMarking: true,
             // Минимум из ширины / высоты
             lgth: null,
+            // Режим работы с гобаном
+            type: 'b',
             // Буфер
             buf: {},
             // Диаграмма
@@ -103,13 +136,28 @@ var schemeModel = Backbone.Model.extend({
         return this.get('size');
     },
 
+    // Логическая обработка клика
     // p: координаты
     // x: число
     // y: число
     add: function (data) {
+        // Смотрим тип
+        // Сверяем с тем, что есть
+        // Вносим изменения
         console.log(data);
+        data = {  
+            'b': data.p
+        };
+        this.trigger('vm:change', data);
     },
 
+    // Проверяет вносимые изменения и дополняет их
+    // Возвращает результат
+    modify: function (data) {
+        return data;
+    },
+
+    // Вносит изменения в диаграмму, триггерит событие
     extend: function (destination, source) {}
 });
 
@@ -123,8 +171,7 @@ var schemeModel = Backbone.Model.extend({
  * Два объекта с текущим состоянием (камни и метки), а также объект с изменениями
  *
  */
-var schemeView = Backbone.View.extend({
-    
+var schemeView = Backbone.View.extend({    
     tagName: 'div',
 
     className: 'scheme',
@@ -137,6 +184,7 @@ var schemeView = Backbone.View.extend({
         this._layers = {};
 
         this.listenTo(this.model, 'change:lgth', this.setDimensions);
+        this.listenTo(this.model, 'vm:change', this.draw);
         /*this.listenTo(this.model, 'vm:clear');
         this.listenTo(this.model, 'vm:change');
         this.listenTo(this.model, 'vm:redraw');*/
@@ -190,7 +238,6 @@ var schemeView = Backbone.View.extend({
     },
 
     figures: {
-
         ab: function (state, coords) {
             var ps = state.get('ps'),
                 unit = state.get('unit'),
@@ -235,8 +282,8 @@ var schemeView = Backbone.View.extend({
             this.apply('beginPath')
                 .prop({ fillStyle: '#000' })
                 .fillRect({
-                    x0: ps[coords[i].x] - delta,
-                    y0: ps[coords[i].y] - delta,
+                    x0: ps[coords.x] - delta,
+                    y0: ps[coords.y] - delta,
                     w: 1 + delta * 2,
                     h: 1 + delta * 2
                 });
@@ -250,8 +297,8 @@ var schemeView = Backbone.View.extend({
             this.apply('beginPath')
                 .prop({ fillStyle: '#fff' })
                 .fillRect({
-                    x0: ps[coords[i].x] - delta,
-                    y0: ps[coords[i].y] - delta,
+                    x0: ps[coords.x] - delta,
+                    y0: ps[coords.y] - delta,
                     w: 1 + delta * 2,
                     h: 1 + delta * 2
                 });
