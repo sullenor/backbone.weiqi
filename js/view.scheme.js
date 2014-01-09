@@ -3,12 +3,22 @@
  *
  */
 function token(x, y) {
-    this.x = x;
-    this.y = y;
+    if (typeof x === 'string') {
+        this.literal = x;
+        this.x = this.decode(this.literal.charAt(0));
+        this.y = this.decode(this.literal.charAt(1));
+    } else {
+        this.x = x;
+        this.y = y;
+    }
 }
 
 token.prototype = {
     alpha: 'a'.charCodeAt(0),
+
+    decode: function (x) {
+        return x.charCodeAt(0) - this.alpha;
+    },
 
     encode: function (x) {
         return String.fromCharCode(this.alpha + x);
@@ -23,6 +33,11 @@ token.prototype = {
     },
 
     valueOf: function () {
+        if (!this.x || !this.y) {
+            this.x = this.decode(this.literal.charAt(0));
+            this.y = this.decode(this.literal.charAt(1));
+        }
+
         return {
             x: this.x,
             y: this.y
@@ -103,7 +118,7 @@ tree.fn.init.prototype = tree.fn;
  * с локальными изменениями (применение изменений за каждый промежуточный узел)
  *
  */
-var schemeModel = Backbone.Model.extend({    
+var schemeModel = Backbone.Model.extend({
     defaults: function () {
         return {
             colors: {
@@ -145,7 +160,7 @@ var schemeModel = Backbone.Model.extend({
         // Сверяем с тем, что есть
         // Вносим изменения
         console.log(data);
-        data = {  
+        data = {
             'b': data.p
         };
         this.trigger('vm:change', data);
@@ -171,7 +186,7 @@ var schemeModel = Backbone.Model.extend({
  * Два объекта с текущим состоянием (камни и метки), а также объект с изменениями
  *
  */
-var schemeView = Backbone.View.extend({    
+var schemeView = Backbone.View.extend({
     tagName: 'div',
 
     className: 'scheme',
@@ -204,11 +219,7 @@ var schemeView = Backbone.View.extend({
             x = Math.round(x);
             y = Math.round(y);
 
-            this.model.add({
-                p: this.numToLetter(x, y),
-                x: x,
-                y: y
-            });
+            this.model.add(new token(x, y));
         }
     },
 
@@ -435,9 +446,21 @@ var schemeView = Backbone.View.extend({
 
             _.each(attr, function (v, k) {
                 if (k in this.figures) {
+                    if (_.isArray(v)) {
+                        for (var lgth = v.length, i = 0; i < lgth; i++) {
+                            if (v[i] instanceof token) continue;
+
+                            v[i] = new token(v[i]);
+                        }
+                    } else {
+                        if (!(v instanceof token)) {
+                            v = new token(v);
+                        }
+                    }
+
                     layer = this.layer(keys[k] || 'marking');
                     method = this.figures[k];
-                    method.call(layer, this.model, this.letterToNum(v));
+                    method.call(layer, this.model, v);
                 }
             }, this);
         }
@@ -451,37 +474,6 @@ var schemeView = Backbone.View.extend({
         }
 
         return true;
-    },
-
-    numToLetter: function () {
-        var a = 'a'.charCodeAt(0),
-            rs = '';
-
-        for (var lgth = arguments.length, i = 0; i < lgth; i++) {
-            rs += String.fromCharCode(arguments[i] + a);
-        }
-
-        return rs;
-    },
-
-    letterToNum: function (coords) {
-        var a = 'a'.charCodeAt(0);
-
-        if (_.isArray(coords)) {
-            for (var lgth = coords.length, i = 0; i < lgth; i++) {
-                coords[i] = {
-                    x: coords[i].charCodeAt(0) - a,
-                    y: coords[i].charCodeAt(1) - a
-                };
-            }
-
-            return coords;
-        } else {
-            return {
-                x: coords.charCodeAt(0) - a,
-                y: coords.charCodeAt(1) - a
-            };
-        }
     },
 
     getPosition: function (x) {
